@@ -5,8 +5,11 @@ import com.example.wkdly.entity.User;
 import com.example.wkdly.service.UserService;
 import com.example.wkdly.utils.JetUtil;
 import com.example.wkdly.utils.Md5Util;
+import com.example.wkdly.utils.ThreadLocalUtil;
 import jakarta.validation.constraints.Pattern;
+import org.hibernate.validator.constraints.URL;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -52,9 +55,43 @@ public class UserController {
 
     @GetMapping("/info")
     public Result<User>getUserInfo(@RequestHeader("Authorization") String token) {
-        Map<String,Object>map= JetUtil.parseToken(token);
+       /* Map<String,Object>map= JetUtil.parseToken(token);
+        String username=map.get("username").toString();*/
+        Map<String,Object>map=ThreadLocalUtil.get();
         String username=map.get("username").toString();
         User user=userService.findUserByName(username);
         return Result.success(user);
+    }
+
+    @PutMapping("/update")
+    public Result updateUserInfo(@RequestBody @Validated User user) {
+        userService.update(user);
+        return Result.success();
+    }
+    @PatchMapping ("/updateAvatar")
+    public Result updateAvatar(@RequestParam @URL String avatarUrl) {
+        userService.updateAvatar(avatarUrl);
+        return Result.success();
+
+    }
+    @PatchMapping("/updatePwd")
+    public Result updatePwd(@RequestBody Map<String,String> params) {
+        String oldPwd=params.get("oldPwd");
+        String newPwd=params.get("newPwd");
+        String confirmPwd=params.get("confirmPwd");
+        if (!StringUtils.hasLength(oldPwd)||!StringUtils.hasLength(newPwd)||!StringUtils.hasLength(confirmPwd)) {
+            return Result.error("密码不为空");
+        }
+        Map<String,Object> map=ThreadLocalUtil.get();
+        String username=(String) map.get("username");
+        User user=userService.findUserByName(username);
+        if (!user.getPassword().equals(Md5Util.getMD5String(oldPwd))) {
+            return Result.error("原密码错误");
+        }
+        if (!newPwd.equals(confirmPwd)) {
+            return Result.error("两次密码不一致");
+        }
+        userService.updatePassword(newPwd);
+        return Result.success();
     }
 }

@@ -16,7 +16,7 @@ public class User {
 
 
     @NotNull
-    private Long id;
+    private Integer id;
 
     private String username;
 
@@ -26,7 +26,7 @@ public class User {
 
 
     @NotEmpty
-    @Pattern(regexp = "^\\s{2,10}$",message = "昵称格式不合法！")
+    @Pattern(regexp = "^[a-z]{2,10}$",message = "昵称格式不合法！")
     private String nickname;
 
 
@@ -36,7 +36,6 @@ public class User {
 
 
     @URL
-    @NotEmpty
     private String userPic;
 
 
