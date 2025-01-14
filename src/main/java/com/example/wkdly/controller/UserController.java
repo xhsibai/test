@@ -9,12 +9,14 @@ import com.example.wkdly.utils.ThreadLocalUtil;
 import jakarta.validation.constraints.Pattern;
 import org.hibernate.validator.constraints.URL;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Validated
 @RestController
@@ -22,6 +24,8 @@ import java.util.Map;
 public class UserController {
     @Autowired
     private UserService userService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
     @PostMapping("/register")
     public Result register(@Pattern(regexp = "^\\S{5,16}$") String username, @Pattern(regexp = "^\\S{5,16}$") String password) {
         User user=userService.findUserByName(username);
@@ -44,6 +48,7 @@ public class UserController {
                 map.put("id",user.getId());
                 map.put("username",user.getUsername());
                 String jwtToken = JetUtil.getJwtToken(map);
+                stringRedisTemplate.opsForValue().set(jwtToken,jwtToken,1, TimeUnit.HOURS);
                 return Result.success(jwtToken);
             }else {
                 return Result.error("密码错误！");
@@ -75,7 +80,7 @@ public class UserController {
 
     }
     @PatchMapping("/updatePwd")
-    public Result updatePwd(@RequestBody Map<String,String> params) {
+    public Result updatePwd(@RequestBody Map<String,String> params,@RequestHeader("Authorization")String token) {
         String oldPwd=params.get("oldPwd");
         String newPwd=params.get("newPwd");
         String confirmPwd=params.get("confirmPwd");
@@ -92,6 +97,7 @@ public class UserController {
             return Result.error("两次密码不一致");
         }
         userService.updatePassword(newPwd);
+        stringRedisTemplate.opsForValue().getOperations().delete(token);
         return Result.success();
     }
 }
